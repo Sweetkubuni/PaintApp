@@ -1,7 +1,6 @@
 var http = require("http");
 var url = require('url');
 var fs = require('fs');
-var io = require('socket.io');
 
 var server = http.createServer(function(req, res){
 	var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress ||req.connection.socket.remoteAddress;
@@ -33,7 +32,7 @@ var server = http.createServer(function(req, res){
 });
 
 server.listen(8001);
-io.listen(server);
+var io = require('socket.io')(server);
 io.on('connection', function(socket){
 
 	console.log('a user connected');
