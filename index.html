@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SketchPad</title>
+	<style>
+		#sketch{
+			border-style: double;
+			border-color: black;
+			
+			 padding-left: 0;
+			 padding-right: 0;
+			 margin-left: auto;
+			 margin-right: auto;
+			 display: block;
+		}
+		#slider{
+		
+			 margin: 10px;
+			 padding-left: 0;
+			 padding-right: 0;
+			 margin-left: auto;
+			 margin-right: auto;
+			 display: block;
+		}
+		.ui-slider-horizontal  {
+			height: 8px;
+			width: 200px;
+		}
+		.ui-slider .ui-slider-handle {
+			height: 10px;
+			width: 5px;
+			padding-left: 5px;
+		}
+	</style>
+	<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+	<link rel="stylesheet" href="https://code.jquery.com/ui/1.11.4/themes/south-street/jquery-ui.css">
+	<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+	<script src="https://code.jquery.com/ui/1.11.4/jquery-ui.min.js"></script>
+	<script src='https://cdn.rawgit.com/bgrins/spectrum/master/spectrum.js'></script>
+	<link rel='stylesheet' href='https://cdn.rawgit.com/bgrins/spectrum/master/spectrum.css' />
+	
+</head>
+
+<body onload ="main()">
+	<canvas id="sketch" width="500px" height="500px" border="10px";>
+		<script>
+			var ctx;
+			var canvas;
+			var socket;
+			  $(function() {
+				$( "#slider" ).slider({
+					value: 10,
+					min: 2,
+					max: 100,
+					step: 2,
+					slide: function( event, ui){
+						ctx.lineWidth = ui.value;
+					}
+				});
+				$(".basic").spectrum({
+					color: '#ff0000',
+					change: function(color) {
+						ctx.strokeStyle = color.toHexString();
+					}
+				});
+			  });
+			
+			
+			function main()
+			{
+			    canvas = document.getElementById('sketch');
+				ctx =  canvas.getContext('2d');
+				socket = io();
+				function midPointBtw(p1, p2) {
+				  return {
+					x: p1.x + (p2.x - p1.x) / 2,
+					y: p1.y + (p2.y - p1.y) / 2
+				  };
+				}
+
+				ctx.lineWidth = 10;
+				ctx.lineJoin = ctx.lineCap = 'round';
+
+				var isDrawing, points = [ ];
+
+				function getMousePos(canvas, evt) {
+					var rect = canvas.getBoundingClientRect();
+					return {
+					  x: evt.clientX - rect.left,
+					  y: evt.clientY - rect.top
+					};
+				}
+				canvas.onmousedown = function(e) {
+				  isDrawing = true;
+				  var pos = getMousePos(canvas, e);
+				  points.push(pos);
+				};
+
+				canvas.onmousemove = function(e) {
+				  if (!isDrawing) return;
+				  var pos = getMousePos(canvas, e);
+				  points.push(pos);
+				  
+				  // send to server
+				  socket.emit('draw', {'width': ctx.lineWidth, 'color': ctx.strokeStyle, 'points':points});
+				  
+				  // draw path
+				  var p1 = points[0];
+				  var p2 = points[1];
+				  
+				  ctx.beginPath();
+				  ctx.moveTo(p1.x, p1.y);
+				  console.log(points);
+
+				  for (var i = 1, len = points.length; i < len; i++) {
+					// we pick the point between pi+1 & pi+2 as the
+					// end point and p1 as our control point
+					var midPoint = midPointBtw(p1, p2);
+					ctx.quadraticCurveTo(p1.x, p1.y, midPoint.x, midPoint.y);
+					p1 = points[i];
+					p2 = points[i+1];
+				  }
+				  // Draw last line as a straight line while
+				  // we wait for the next point to be able to calculate
+				  // the bezier control point
+				  ctx.lineTo(p1.x, p1.y);
+				  ctx.stroke();
+				};
+
+				canvas.onmouseup = function() {
+				  isDrawing = false;
+				  points.length = 0;
+				};
+				
+				socket.on('draw message', function(msg) {
+					// draw path
+				  var p1 = msg.points[0];
+				  var p2 = msg.points[1];
+				  
+				  var tmp_lineWidth = ctx.lineWidth;
+				  var tmp_strokeStyle = ctx.strokeStyle;
+				  
+				  ctx.lineWidth = msg.width;
+				  ctx.strokeStyle =  msg.color;
+				  
+				  ctx.beginPath();
+				  ctx.moveTo(p1.x, p1.y);
+				  console.log(msg.points);
+
+				  for (var i = 1, len = msg.points.length; i < len; i++) {
+					// we pick the point between pi+1 & pi+2 as the
+					// end point and p1 as our control point
+					var midPoint = midPointBtw(p1, p2);
+					ctx.quadraticCurveTo(p1.x, p1.y, midPoint.x, midPoint.y);
+					p1 = msg.points[i];
+					p2 = msg.points[i+1];
+				  }
+				  // Draw last line as a straight line while
+				  // we wait for the next point to be able to calculate
+				  // the bezier control point
+				  ctx.lineTo(p1.x, p1.y);
+				  ctx.stroke();
+				  
+				  ctx.lineWidth   = tmp_lineWidth;
+				  ctx.strokeStyle =  tmp_strokeStyle;
+				});
+			}
+			
+		</script>
+	</canvas>
+	<div id="slider"></div>
+	<input type='text' class="basic"/>
+</body>
+</html>
