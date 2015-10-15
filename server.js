@@ -25,7 +25,7 @@ var server = http.createServer(function(req, res){
 		
 		default:
 		res.writeHead(404);
-        response.write("opps this doesn't exist - 404");
+        	res.write("opps this doesn't exist - 404");
 		break;
 	}
 	 res.end();
