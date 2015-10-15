@@ -34,7 +34,7 @@ var server = http.createServer(function(req, res){
 
 server.listen(8001);
 io.listen(server);
-io.sockets.on('connection', function(socket){
+io.on('connection', function(socket){
 
 	console.log('a user connected');
 	
